@@ -1,0 +1,37 @@
+/*
+ * Copyright 2020-2026 JetBrains s.r.o. and Kotlin Deep Learning project contributors. All Rights Reserved.
+ * Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE.txt file.
+ */
+
+/*
+ * TensorFlow 1.15 (org.tensorflow:libtensorflow_jni:1.15.0) ships JNI natives for linux-x86_64,
+ * windows-x86_64 and darwin-x86_64 only -- there is no arm64 build and there never will be, since
+ * the TensorFlow 1.x Java line was last released in 2019.
+ *
+ * On an arm64 host every TensorFlow-backed test therefore dies with
+ *   UnsatisfiedLinkError: Cannot find TensorFlow native library for OS: darwin, architecture: aarch64
+ *
+ * To run these tests on Apple Silicon, point the test JVM at an x86-64 JDK; macOS executes it
+ * through Rosetta 2, so the darwin-x86_64 natives load:
+ *
+ *   ./gradlew :tensorflow:test -Pkotlindl.testJvm=/path/to/x64-jdk/Contents/Home/bin/java
+ *
+ * or export KOTLINDL_TEST_JVM=/path/to/x64-jdk/Contents/Home/bin/java
+ *
+ * That alone is not enough: the darwin-x86_64 TensorFlow build is compiled with AVX, and Rosetta
+ * does not advertise AVX by default, so the library aborts the process at load time with
+ *   F tensorflow/core/platform/cpu_feature_guard.cc:37] The TensorFlow library was compiled to
+ *   use AVX instructions, but these aren't available on your machine.
+ * Setting ROSETTA_ADVERTISE_AVX=1 (done below) enables Rosetta's AVX support and TensorFlow loads.
+ *
+ * On an x86-64 host nothing needs to be set.
+ */
+def testJvm = providers.gradleProperty('kotlindl.testJvm')
+        .orElse(providers.environmentVariable('KOTLINDL_TEST_JVM'))
+
+tasks.withType(Test).configureEach {
+    if (testJvm.present) {
+        executable = testJvm.get()
+        environment('ROSETTA_ADVERTISE_AVX', '1')
+    }
+}

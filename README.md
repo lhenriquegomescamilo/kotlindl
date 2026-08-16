@@ -1,6 +1,6 @@
 # KotlinDL: High-level Deep Learning API in Kotlin [![official JetBrains project](http://jb.gg/badges/incubator.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
 
-[![Kotlin](https://img.shields.io/badge/kotlin-1.8.21-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.4.10-blue.svg?logo=kotlin)](http://kotlinlang.org)
 [![Slack channel](https://img.shields.io/badge/chat-slack-green.svg?logo=slack)](https://kotlinlang.slack.com/messages/kotlindl/)
 
 KotlinDL is a high-level Deep Learning API written in Kotlin and inspired by [Keras](https://keras.io). 
@@ -222,7 +222,10 @@ This table shows the mapping between KotlinDL, TensorFlow, ONNX Runtime, Compile
 | 0.4.0            | 8                    | 1.11.0               | 1.15               |                              |
 | 0.5.0-0.5.1      | 11                   | 1.12.1               | 1.15               | 31                           |
 | 0.5.2            | 11                   | 1.14.0               | 1.15               | 31                           |
-| 0.6.*            | 11                   | 1.16.0               | 1.15               | 31                           |
+| 0.6.*            | 11                   | 1.16.0               | 1.15               | 36                           |
+
+Building KotlinDL from source requires JDK 17 or newer (JDK 25 is used for development) and Android SDK 36
+with build tools 36.0.0; the published artifacts still target Java 11 bytecode.
 
 ## Documentation
 
