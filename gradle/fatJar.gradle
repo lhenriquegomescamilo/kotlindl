@@ -11,9 +11,9 @@ dependencies {
 
 tasks.register('fatJar', Jar) {
     archiveClassifier = 'all'
-    manifest {
-        attributes 'Implementation-Version': '1.15'
-    }
+    // The 'Implementation-Version: 1.15' manifest attribute that used to be set here was a
+    // workaround for TensorFlow 1.x native extraction (tensorflow/tensorflow#30488). TensorFlow
+    // Java loads its natives through JavaCPP, so the attribute is no longer needed.
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     with tasks.named('jar').get()
     duplicatesStrategy = DuplicatesStrategy.INCLUDE
