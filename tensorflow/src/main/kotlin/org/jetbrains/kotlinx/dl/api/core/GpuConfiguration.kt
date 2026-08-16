@@ -1,7 +1,7 @@
 package org.jetbrains.kotlinx.dl.api.core
 
-import org.tensorflow.framework.ConfigProto
-import org.tensorflow.framework.GPUOptions
+import org.tensorflow.proto.ConfigProto
+import org.tensorflow.proto.GPUOptions
 
 /**
  * Represents the configuration for the GPU in a TensorFlow session.
@@ -23,7 +23,13 @@ public class GpuConfiguration(
     public val pollingActiveDelayUsecs: Int? = null,
     public val pollingInactiveDelayMsecs: Int? = null,
 ) {
-    public fun toTensorFlowSessionConfig(): ByteArray? {
+    /**
+     * Builds the session configuration.
+     *
+     * Returns a [ConfigProto] message rather than its serialized bytes: TensorFlow Java 1.x takes
+     * the parsed proto in the [org.tensorflow.Session] constructor.
+     */
+    public fun toTensorFlowSessionConfig(): ConfigProto {
         val gpuOptions: GPUOptions.Builder = GPUOptions.newBuilder()
         if (allowGrowth != null)
             gpuOptions.setAllowGrowth(allowGrowth)
@@ -40,10 +46,8 @@ public class GpuConfiguration(
         if (pollingInactiveDelayMsecs != null)
             gpuOptions.setPollingInactiveDelayMsecs(pollingInactiveDelayMsecs)
 
-        val config: ConfigProto = ConfigProto.newBuilder()
+        return ConfigProto.newBuilder()
             .setGpuOptions(gpuOptions)
             .build()
-
-        return config.toByteArray()
     }
 }
