@@ -57,6 +57,7 @@ public object MetalPlugin {
      * Searches the documented locations and returns a usable plugin library, or `null` if none was
      * found. Wheels are extracted to a cache directory next to [defaultLocation].
      */
+    @JvmStatic
     public fun locate(): Path? {
         val candidates = listOfNotNull(
             System.getProperty(PLUGIN_PROPERTY),
@@ -74,6 +75,7 @@ public object MetalPlugin {
      *
      * @throws IllegalArgumentException if nothing usable is found at that location.
      */
+    @JvmStatic
     public fun resolve(location: Path): Path {
         require(location.exists()) { "No such file or directory: $location" }
 
@@ -91,6 +93,7 @@ public object MetalPlugin {
     }
 
     /** Message describing how to obtain the plugin, used when the search comes up empty. */
+    @JvmStatic
     public fun notFoundMessage(): String =
         "$LIBRARY_NAME was not found. Set -D$PLUGIN_PROPERTY=<path>, the $PLUGIN_ENV_VAR " +
                 "environment variable, or place it at $defaultLocation. The path may be the dylib, a " +

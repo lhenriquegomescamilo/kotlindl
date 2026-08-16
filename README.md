@@ -122,10 +122,12 @@ KotlinDL consists of several modules:
 * `kotlin-deeplearning-impl` implementation classes and utilities
 * `kotlin-deeplearning-onnx` inference with ONNX Runtime
 * `kotlin-deeplearning-tensorflow` learning and inference with TensorFlow
+* `kotlin-deeplearning-tensorflow-metal` optional Apple Metal (GPU) acceleration for the TensorFlow backend
 * `kotlin-deeplearning-visualization` visualization utilities
 * `kotlin-deeplearning-dataset` dataset classes
 
 Modules `kotlin-deeplearning-tensorflow` and `kotlin-deeplearning-dataset` are only available for desktop JVM, while other artifacts could also be used on Android.
+`kotlin-deeplearning-tensorflow-metal` is narrower still: macOS on Apple Silicon only, and it requires JDK 22 or later. See [Apple Metal on Apple Silicon](#apple-metal-on-apple-silicon).
 
 ## How to configure KotlinDL in your project
 
@@ -346,6 +348,10 @@ val model = Sequential.of(layers, gpuConfiguration = metalGpuConfiguration())
 ```
 
 Run the JVM with `--enable-native-access=ALL-UNNAMED`, otherwise it warns on every restricted call.
+Note the JDK 22 requirement is hard: the artifact is Java 22 bytecode, so on an older JVM it fails to
+load with `UnsupportedClassVersionError` rather than reporting Metal as unavailable. Add the
+dependency only where JDK 22+ is guaranteed. Java callers use the same entry points statically —
+`MetalAcceleration.enable()`.
 
 Three things are worth knowing:
 
