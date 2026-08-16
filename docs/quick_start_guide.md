@@ -11,6 +11,9 @@ first you'll need to set up the appropriate dependencies.
   (wrapping TensorFlow 2.x), which means Apple Silicon is supported natively; earlier releases used
   the TensorFlow 1.15 Java API, which had no arm64 build.
 * The ONNX backend additionally runs on Android.
+* On Apple Silicon, TensorFlow models can optionally run on the GPU via the
+  `kotlin-deeplearning-tensorflow-metal` artifact, which needs JDK 22 or later. See
+  [Apple Metal on Apple Silicon](../README.md#apple-metal-on-apple-silicon).
 
 ## Working with Kotlin DL in an IDE
 1. Open a Kotlin project where you want to use Kotlin DL, or create a new Kotlin project in IntelliJ IDEA as described in the [Kotlin documentation](https://kotlinlang.org/docs/tutorials/jvm-get-started.html).
