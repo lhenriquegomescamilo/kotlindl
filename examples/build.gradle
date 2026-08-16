@@ -58,5 +58,3 @@ tasks.named('test') {
     minHeapSize = "1024m"
     maxHeapSize = "8g"
 }
-
-apply from: project.rootProject.file('gradle/tensorflowTestJvm.gradle')

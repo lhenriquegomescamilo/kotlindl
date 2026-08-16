@@ -8,9 +8,17 @@ dependencies {
     api project(":dataset")
     api project(":api")
     api project(":impl")
-    api 'org.tensorflow:tensorflow:1.15.0'
-    api 'org.tensorflow:proto:1.15.0'
-    api 'com.google.protobuf:protobuf-java:3.21.9'
+    // TensorFlow Java 1.0.0 wraps the TensorFlow 2.x C API and, unlike the 1.15 line,
+    // ships a macosx-arm64 native, so this module runs natively on Apple Silicon.
+    //
+    // 1.0.0 rather than the newer 1.2.0 deliberately: tensorflow-core-native 1.2.0 dropped the
+    // macosx-x86_64 and windows-x86_64 classifiers, which would silently drop Windows and
+    // Intel-Mac support for this library. 1.0.0 still publishes all five platforms
+    // (linux-x86_64, linux-arm64, macosx-arm64, macosx-x86_64, windows-x86_64) and
+    // tensorflow-core-platform aggregates them into a single dependency.
+    api 'org.tensorflow:tensorflow-core-platform:1.0.0'
+    api 'org.tensorflow:ndarray:1.0.0'
+    api 'com.google.protobuf:protobuf-java:3.25.5'
     api 'com.beust:klaxon:5.5'
     api 'io.github.microutils:kotlin-logging:2.1.21' // for logging
 
@@ -36,8 +44,6 @@ kotlin {
 tasks.named('test') {
     useJUnitPlatform()
 }
-
-apply from: project.rootProject.file('gradle/tensorflowTestJvm.gradle')
 
 tasks.register('sourcesJar', Jar) {
     archiveClassifier = 'sources'
