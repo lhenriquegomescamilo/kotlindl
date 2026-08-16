@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-KotlinDL — a Keras-inspired high-level deep learning API in Kotlin, published as `org.jetbrains.kotlinx:kotlin-deeplearning-*`. Two independent backends sit behind one shared API surface: **TensorFlow 1.15 Java** (training + inference, desktop JVM only) and **ONNX Runtime** (inference only, JVM + Android).
+KotlinDL — a Keras-inspired high-level deep learning API in Kotlin, published as `org.jetbrains.kotlinx:kotlin-deeplearning-*`. Two independent backends sit behind one shared API surface: **TensorFlow Java 1.0.0** (wrapping the TensorFlow 2.x C API; training + inference, desktop JVM only) and **ONNX Runtime** (inference only, JVM + Android).
 
 ## Build & test
 
@@ -21,30 +21,18 @@ export ANDROID_HOME=~/Library/Android/sdk
 
 | Command | Scope |
 |---|---|
-| `./gradlew :tensorflow:test` | The bulk of the suite (338 tests): activations, initializers, layers, plus `api/core/integration` tests that really train models. **Needs an extra flag on Apple Silicon** — see below |
+| `./gradlew :tensorflow:test` | The bulk of the suite (338 tests): activations, initializers, layers, plus `api/core/integration` tests that really train models |
 | `./gradlew :impl:jvmTest` | Preprocessing / image conversion — fast, good smoke test (33 tests) |
 | `./gradlew :onnx:jvmTest` | ONNX preprocessing + model summary (4 tests) |
 | `./gradlew :examples:test` | Integration tests that invoke the `examples` mains; downloads pretrained models, up to 8 GB heap |
 | `./gradlew fatJar` | Fat jar over all published modules |
 | `./gradlew dokkaGenerate` | API docs (Dokka 2; aggregated output lands in `build/dokka/`) |
 
-### Running the TensorFlow tests on Apple Silicon
+Everything builds and tests natively on arm64: `tensorflow-core-native:1.0.0` ships `macosx-arm64`, and ONNX Runtime 1.16 ships `osx-aarch64`.
 
-`org.tensorflow:libtensorflow_jni:1.15.0` ships natives for `linux-x86_64`, `windows-x86_64` and `darwin-x86_64` only — there is no arm64 build and never will be (the TF 1.x Java line was last released in 2019). On an arm64 JVM every TF-backed test fails with `UnsatisfiedLinkError: Cannot find TensorFlow native library for OS: darwin, architecture: aarch64`.
+**Do not "upgrade" TensorFlow Java to 1.2.0.** `tensorflow-core-native:1.2.0` dropped the `macosx-x86_64` and `windows-x86_64` classifiers, so it would silently remove Windows and Intel-Mac support. 1.0.0 still publishes all five platforms and `tensorflow-core-platform` aggregates them.
 
-The workaround is to run the *test JVM* (not Gradle) as x86-64 under Rosetta 2. `gradle/tensorflowTestJvm.gradle` wires this up for `:tensorflow` and `:examples`:
-
-```bash
-./gradlew :tensorflow:test -Pkotlindl.testJvm=/path/to/x64-jdk/Contents/Home/bin/java
-# or: export KOTLINDL_TEST_JVM=/path/to/x64-jdk/Contents/Home/bin/java
-```
-
-Two things are required and both are easy to miss:
-
-1. **The JDK must actually be x86-64.** SDKMAN installs arm64 builds on Apple Silicon, so grab an explicit x64 build (e.g. Temurin `OpenJDK21U-jdk_x64_mac_hotspot`). Verify with `file .../bin/java` → `Mach-O 64-bit executable x86_64`.
-2. **AVX must be advertised.** The darwin-x86_64 TensorFlow build is compiled with AVX, and Rosetta does not expose AVX by default, so the process aborts (SIGABRT, exit 134) at library load with `F .../cpu_feature_guard.cc:37] The TensorFlow library was compiled to use AVX instructions, but these aren't available on your machine`. The script sets `ROSETTA_ADVERTISE_AVX=1` on the test task, which fixes it.
-
-On an x86-64 host neither flag is needed. Everything else in the repo — ONNX inference (ONNX Runtime 1.16 ships `osx-aarch64`), preprocessing, and all three Android targets — builds and tests natively on arm64.
+The pre-port history is worth knowing if you ever touch TF 1.15 code: that line ships no arm64 native, and its `darwin-x86_64` build is compiled with AVX, which Rosetta 2 does not advertise by default (the process aborts with SIGABRT at library load). Running it on Apple Silicon needed both an x86-64 test JVM *and* `ROSETTA_ADVERTISE_AVX=1`. That workaround is preserved on the `rosetta-tf115-workaround` branch and is not needed here.
 
 Single test: `./gradlew :tensorflow:test --tests "*Conv2DTest"`. Note the task name differs by module type — plain-JVM modules (`tensorflow`, `examples`) use `test`, Kotlin Multiplatform modules (`impl`, `onnx`) use `jvmTest`. The `api` module has no test source set at all.
 
@@ -58,7 +46,7 @@ Setting the `KOTLIN_DL_RELEASE_VERSION` env var makes `:examples` substitute pub
 api            interfaces + data types only; no TF/ONNX dependency. Plain JVM.
 impl           shared implementations: preprocessing ops, image utils, ImageNet/COCO labels. KMP: common/jvm/android.
 dataset        Dataset/DataLoader + embedded MNIST/CIFAR/FSDD loaders. KMP plugin but JVM target only.
-tensorflow     TF 1.15 training & inference.  → api, impl, dataset.  Plain JVM.
+tensorflow     TF Java 1.0.0 training & inference. → api, impl, dataset. Plain JVM.
 onnx           ONNX Runtime inference.        → api, impl.           KMP: common/jvm/android.
 visualization  lets-plot + Swing (jvm), detection overlay views (android). → api, tensorflow.
 examples       not published; depends on everything.
