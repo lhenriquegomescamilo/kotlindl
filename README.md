@@ -357,7 +357,7 @@ Three things are worth knowing:
   the common activations and the SGD/Adam/Momentum/RMSProp/Adadelta/Adagrad optimizers run on Metal.
   3D convolution and pooling, the `Elu`/`Selu`/`Softsign`/`Softplus` activations, the
   `AdaGradDA`/`Ftrl` optimizers and gradient clipping have no Metal kernel and fall back to the CPU.
-- **The win depends on model size.** On an M3 Pro a 224×224 two-layer CNN trains roughly 1.4–2.1×
+- **The win depends on model size.** On an M3 Pro a 224×224 two-layer CNN trains roughly 1.6–2.3×
   faster than on the CPU, with the advantage growing with batch size; small models can be slower on
   the GPU because of dispatch overhead.
 
