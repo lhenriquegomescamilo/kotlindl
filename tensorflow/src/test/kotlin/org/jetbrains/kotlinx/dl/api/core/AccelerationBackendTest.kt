@@ -30,7 +30,7 @@ import org.tensorflow.TensorFlow
  * module can reach it without new native code. A failure here therefore means one of two things:
  * a TensorFlow Java upgrade added the binding (it landed upstream in 1.1.0), or something put the
  * Metal plugin on this module's classpath. Neither is a bug to silence; both mean the GPU notes in
- * README.md, CLAUDE.md and docs/metal_acceleration_plan.md need revisiting.
+ * README.md need revisiting.
  */
 class AccelerationBackendTest {
 
@@ -115,7 +115,7 @@ class AccelerationBackendTest {
             "A GPU device became available with only :tensorflow on the classpath. TensorFlow Java " +
                     "ships no macOS GPU native, and registering Metal is supposed to require an explicit " +
                     "MetalAcceleration.enable() call from :tensorflow-metal -- so something is enabling " +
-                    "an accelerator implicitly. Revisit the GPU notes in README.md and CLAUDE.md."
+                    "an accelerator implicitly. Revisit the GPU notes in README.md."
         )
 
         // Guard against the assertion above passing for an unrelated reason: the failure must be
