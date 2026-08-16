@@ -367,7 +367,8 @@ Three things are worth knowing:
   faster than on the CPU, with the advantage growing with batch size; small models can be slower on
   the GPU because of dispatch overhead.
 
-`docs/metal_acceleration_plan.md` records the measurements behind these notes.
+The figures above were measured on an Apple M3 Pro with `tensorflow-metal` 1.2.0; treat them as
+indicative rather than as a published benchmark.
 
 ## Logging
 

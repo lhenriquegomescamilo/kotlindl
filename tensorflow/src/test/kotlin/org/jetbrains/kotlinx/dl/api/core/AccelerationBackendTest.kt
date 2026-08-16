@@ -30,7 +30,7 @@ import org.tensorflow.TensorFlow
  * module can reach it without new native code. A failure here therefore means one of two things:
  * a TensorFlow Java upgrade added the binding (it landed upstream in 1.1.0), or something put the
  * Metal plugin on this module's classpath. Neither is a bug to silence; both mean the GPU notes in
- * README.md, CLAUDE.md and docs/metal_acceleration_plan.md need revisiting.
+ * README.md and CLAUDE.md need revisiting.
  */
 class AccelerationBackendTest {
 
