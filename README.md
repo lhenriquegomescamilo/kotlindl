@@ -106,6 +106,7 @@ fun main() {
 - [Documentation](#documentation)
 - [Examples and tutorials](#examples-and-tutorials)
 - [Running KotlinDL on GPU](#running-kotlindl-on-gpu)
+  - [Apple Metal on Apple Silicon](#apple-metal-on-apple-silicon)
 - [Logging](#logging)
 - [Fat Jar issue](#fat-jar-issue)
 - [Limitations](#limitations)
@@ -291,10 +292,9 @@ implementation 'org.tensorflow:tensorflow-core-native:1.0.0:linux-x86_64-gpu'
 implementation("org.tensorflow:tensorflow-core-native:1.0.0:linux-x86_64-gpu")
 ```
 
-Note that TensorFlow Java publishes a GPU native for `linux-x86_64` only, so CUDA acceleration is
-available on Linux. Apple GPUs are not supported: Metal acceleration is provided by the
-`tensorflow-metal` PluggableDevice, which is distributed only as a Python wheel and has no binding
-in the TensorFlow Java API.
+Note that TensorFlow Java publishes a CUDA-enabled native for `linux-x86_64` only, so CUDA
+acceleration is available on Linux. For Apple GPUs, see [Apple Metal](#apple-metal-on-apple-silicon)
+below.
 
 On Windows, the following distributions are required:
 - [cudnn](https://developer.nvidia.com/cudnn)
@@ -311,6 +311,57 @@ api("com.microsoft.onnxruntime:onnxruntime_gpu:1.16.0")
 ```
 
 To find more info about ONNXRuntime and CUDA version compatibility, please refer to the [ONNXRuntime CUDA Execution Provider page](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
+
+### Apple Metal on Apple Silicon
+
+TensorFlow models can run on the Apple GPU through Apple's
+[tensorflow-metal](https://developer.apple.com/metal/tensorflow-plugin/) PluggableDevice, using the
+optional `kotlin-deeplearning-tensorflow-metal` artifact. It is a separate module because it needs
+**JDK 22 or later** (it uses the Foreign Function & Memory API), while the rest of KotlinDL targets
+Java 11. Nothing changes for other platforms, and no existing artifact gains a JDK requirement.
+
+```groovy
+// build.gradle
+implementation 'org.jetbrains.kotlinx:kotlin-deeplearning-tensorflow-metal:[KOTLIN-DL-VERSION]'
+```
+
+Apple's plugin binary is not redistributed here, so supply it once. The `tensorflow-metal` wheel is
+an ordinary zip — **Python is not required**:
+
+```bash
+# https://pypi.org/project/tensorflow-metal/ -- version 1.2.0 is recommended
+unzip -j tensorflow_metal-1.2.0-cp311-cp311-macosx_12_0_arm64.whl \
+      tensorflow-plugins/libmetal_plugin.dylib -d ~/.kotlindl/metal
+```
+
+Then enable it, and build models with a configuration that permits soft placement:
+
+```kotlin
+when (val status = MetalAcceleration.enable()) {
+    is MetalStatus.Enabled     -> println("Training on the Apple GPU")
+    is MetalStatus.Unavailable -> println("Using the CPU: ${status.reason}")
+}
+
+val model = Sequential.of(layers, gpuConfiguration = metalGpuConfiguration())
+```
+
+Run the JVM with `--enable-native-access=ALL-UNNAMED`, otherwise it warns on every restricted call.
+
+Three things are worth knowing:
+
+- **Soft placement is required, not optional.** The plugin has no Metal kernel for the `Assign` op,
+  so a graph pinned hard to the GPU cannot place its variables and fails before the first step.
+  `metalGpuConfiguration()` enables soft placement by default; those ops fall back to the CPU while
+  the compute stays on Metal.
+- **Coverage is good but not complete.** Conv2D, depthwise convolution, 2D pooling, dense layers,
+  the common activations and the SGD/Adam/Momentum/RMSProp/Adadelta/Adagrad optimizers run on Metal.
+  3D convolution and pooling, the `Elu`/`Selu`/`Softsign`/`Softplus` activations, the
+  `AdaGradDA`/`Ftrl` optimizers and gradient clipping have no Metal kernel and fall back to the CPU.
+- **The win depends on model size.** On an M3 Pro a 224×224 two-layer CNN trains roughly 1.4–2.1×
+  faster than on the CPU, with the advantage growing with batch size; small models can be slower on
+  the GPU because of dispatch overhead.
+
+`docs/metal_acceleration_plan.md` records the measurements behind these notes.
 
 ## Logging
 
