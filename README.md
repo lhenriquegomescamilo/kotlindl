@@ -4,7 +4,7 @@
 [![Slack channel](https://img.shields.io/badge/chat-slack-green.svg?logo=slack)](https://kotlinlang.slack.com/messages/kotlindl/)
 
 KotlinDL is a high-level Deep Learning API written in Kotlin and inspired by [Keras](https://keras.io). 
-Under the hood, it uses TensorFlow Java API and ONNX Runtime API for Java. KotlinDL offers simple APIs for training deep learning models from scratch, 
+Under the hood, it uses the [TensorFlow Java](https://github.com/tensorflow/java) API (wrapping TensorFlow 2.x) and the ONNX Runtime API for Java. KotlinDL offers simple APIs for training deep learning models from scratch, 
 importing existing Keras and ONNX models for inference, and leveraging transfer learning for tailoring existing pre-trained models to your tasks. 
 
 This project aims to make Deep Learning easier for JVM and Android developers and simplify deploying deep learning models in production environments.
@@ -224,8 +224,32 @@ This table shows the mapping between KotlinDL, TensorFlow, ONNX Runtime, Compile
 | 0.5.2            | 11                   | 1.14.0               | 1.15               | 31                           |
 | 0.6.*            | 11                   | 1.16.0               | 2.x (TF Java 1.0.0)| 36                           |
 
+Since 0.6, the TensorFlow backend is built on [TensorFlow Java](https://github.com/tensorflow/java)
+1.0.0, which wraps the TensorFlow 2.x C API. Earlier versions used the TensorFlow 1.15 Java API,
+which was last released in 2019.
+
 Building KotlinDL from source requires JDK 17 or newer (JDK 25 is used for development) and Android SDK 36
 with build tools 36.0.0; the published artifacts still target Java 11 bytecode.
+
+### Supported platforms
+
+TensorFlow Java publishes natives for the platforms below, and the `tensorflow-core-platform`
+artifact that KotlinDL depends on bundles all of them:
+
+| Platform            | TensorFlow backend | ONNX Runtime backend |
+|---------------------|--------------------|----------------------|
+| linux-x86_64        | yes (CPU and CUDA) | yes                  |
+| linux-arm64         | yes                | yes                  |
+| macosx-arm64        | yes                | yes                  |
+| macosx-x86_64       | yes                | yes                  |
+| windows-x86_64      | yes                | yes                  |
+
+Apple Silicon runs the TensorFlow backend natively as of 0.6. Before that, KotlinDL was pinned to
+TensorFlow 1.15, which shipped no arm64 native at all.
+
+Note that `tensorflow-core-native` 1.2.0 and later dropped the `macosx-x86_64` and `windows-x86_64`
+classifiers, which is why KotlinDL stays on 1.0.0 — upgrading would silently drop Intel Mac and
+Windows support.
 
 ## Documentation
 
@@ -357,29 +381,30 @@ These configuration files can be found in the `examples` module.
 
 ## Fat Jar issue
 
-There is a known Stack Overflow [question](https://stackoverflow.com/questions/47477069/issue-running-tensorflow-with-java/52003343) 
-and TensorFlow [issue](https://github.com/tensorflow/tensorflow/issues/30488) with Fat Jar creation and execution on Amazon EC2 instances.
+Since KotlinDL 0.6 the TensorFlow backend uses TensorFlow Java, which loads its natives through
+JavaCPP rather than through the TensorFlow 1.x extraction mechanism. The
+`Implementation-Version: 1.15` manifest workaround that older versions of this guide recommended —
+a fix for [this TensorFlow issue](https://github.com/tensorflow/tensorflow/issues/30488), which
+produced errors such as
 
 ```
-java.lang.UnsatisfiedLinkError: /tmp/tensorflow_native_libraries-1562914806051-0/libtensorflow_jni.so: libtensorflow_framework.so.1: cannot open shared object file: No such file or directory
+java.lang.UnsatisfiedLinkError: /tmp/tensorflow_native_libraries-.../libtensorflow_jni.so: libtensorflow_framework.so.1: cannot open shared object file
 ```
 
-Despite the fact that the [bug](https://github.com/tensorflow/tensorflow/issues/30488) describing this problem was closed in the release of TensorFlow 1.14, 
-it was not fully fixed and required an additional line in the build script.
+— is no longer required and should be removed if you are carrying it.
 
-One simple [solution](https://github.com/tensorflow/tensorflow/issues/30635#issuecomment-615513958) is to add a TensorFlow version specification to the Jar's Manifest. 
-Below is an example of a Gradle build task for Fat Jar creation.
+What does still matter when building a fat jar is that the native artifacts survive shading.
+`tensorflow-core-platform` pulls in one `tensorflow-core-native` jar per platform, each carrying a
+native library plus JavaCPP metadata, so make sure duplicate entries are merged rather than dropped:
 
 ```groovy
 // build.gradle
 
-task fatJar(type: Jar) {
-    manifest {
-        attributes 'Implementation-Version': '1.15'
-    }
-    classifier = 'all'
+tasks.register('fatJar', Jar) {
+    archiveClassifier = 'all'
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
 }
 ```
 
@@ -387,19 +412,23 @@ task fatJar(type: Jar) {
 // build.gradle.kts
 
 plugins {
-    kotlin("jvm") version "1.5.31"
-    id("com.github.johnrengelman.shadow") version "7.0.0"
+    kotlin("jvm") version "2.4.10"
+    id("com.gradleup.shadow") version "9.6.1"
 }
 
-tasks{
+tasks {
     shadowJar {
         manifest {
-            attributes(Pair("Main-Class", "MainKt"))
-            attributes(Pair("Implementation-Version", "1.15"))
+            attributes("Main-Class" to "MainKt")
         }
+        mergeServiceFiles()
     }
 }
 ```
+
+If jar size is a concern, depend on `org.tensorflow:tensorflow-core-api` plus only the
+`tensorflow-core-native` classifier for the platforms you ship to, instead of the
+`tensorflow-core-platform` aggregate.
 
 ## Limitations
 
