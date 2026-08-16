@@ -7,6 +7,9 @@ dependencies {
     api project(":tensorflow")
     api project(":onnx")
     api project(":visualization")
+    // :tensorflow-metal is deliberately excluded. It is macOS-arm64 only and compiled for Java 22,
+    // so bundling it would raise the fat jar's runtime floor from Java 11 to Java 22 for everyone.
+    // Depend on kotlin-deeplearning-tensorflow-metal explicitly to opt in.
 }
 
 tasks.register('fatJar', Jar) {
