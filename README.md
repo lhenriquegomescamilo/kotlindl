@@ -222,7 +222,7 @@ This table shows the mapping between KotlinDL, TensorFlow, ONNX Runtime, Compile
 | 0.4.0            | 8                    | 1.11.0               | 1.15               |                              |
 | 0.5.0-0.5.1      | 11                   | 1.12.1               | 1.15               | 31                           |
 | 0.5.2            | 11                   | 1.14.0               | 1.15               | 31                           |
-| 0.6.*            | 11                   | 1.16.0               | 1.15               | 36                           |
+| 0.6.*            | 11                   | 1.16.0               | 2.x (TF Java 1.0.0)| 36                           |
 
 Building KotlinDL from source requires JDK 17 or newer (JDK 25 is used for development) and Android SDK 36
 with build tools 36.0.0; the published artifacts still target Java 11 bytecode.
@@ -257,21 +257,23 @@ and install the CUDA framework to allow calculations on a GPU device.
 
 Note that only NVIDIA devices are supported.
 
-You will also need to add the following dependencies in your project if you wish to leverage a GPU: 
+You will also need to add the GPU-enabled TensorFlow native in your project if you wish to leverage a GPU:
 ```groovy
 // build.gradle
-implementation 'org.tensorflow:libtensorflow:1.15.0'
-implementation 'org.tensorflow:libtensorflow_jni_gpu:1.15.0'
+implementation 'org.tensorflow:tensorflow-core-native:1.0.0:linux-x86_64-gpu'
 ```
 ```kotlin
 // build.gradle.kts
-implementation ("org.tensorflow:libtensorflow:1.15.0")
-implementation ("org.tensorflow:libtensorflow_jni_gpu:1.15.0")
+implementation("org.tensorflow:tensorflow-core-native:1.0.0:linux-x86_64-gpu")
 ```
 
+Note that TensorFlow Java publishes a GPU native for `linux-x86_64` only, so CUDA acceleration is
+available on Linux. Apple GPUs are not supported: Metal acceleration is provided by the
+`tensorflow-metal` PluggableDevice, which is distributed only as a Python wheel and has no binding
+in the TensorFlow Java API.
+
 On Windows, the following distributions are required:
-- CUDA cuda_10.0.130_411.31_win10
-- [cudnn-7.6.3](https://developer.nvidia.com/compute/machine-learning/cudnn/secure/7.6.3.30/Production/10.0_20190822/cudnn-10.0-windows10-x64-v7.6.3.30.zip)
+- [cudnn](https://developer.nvidia.com/cudnn)
 - [C++ redistributable parts](https://www.microsoft.com/en-us/download/details.aspx?id=48145) 
 
 For inference of ONNX models on a CUDA device, you will also need to add the following dependencies to your project:
@@ -432,8 +434,8 @@ Currently, only a limited set of deep learning architectures are supported. Here
 * Other layers:
   - `Permute`, `RepeatVector`.
 
-TensorFlow 1.15 Java API is currently used for layer implementation, but this project will be switching to TensorFlow 2.+ in the nearest future. 
-This, however, does not affect the high-level API. Inference with TensorFlow models is currently supported only on desktops. 
+Layers are implemented on the TensorFlow Java 1.0.0 bindings, which wrap the TensorFlow 2.x C API.
+This does not affect the high-level API. Inference with TensorFlow models is currently supported only on desktops.
 
 ## Contributing
 
