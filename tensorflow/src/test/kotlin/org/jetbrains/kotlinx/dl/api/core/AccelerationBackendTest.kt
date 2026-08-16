@@ -16,26 +16,29 @@ import org.tensorflow.Session
 import org.tensorflow.TensorFlow
 
 /**
- * Pins down which acceleration backends this module can actually reach.
+ * Pins down which acceleration backends *this module on its own* can reach: none. On the classpath
+ * of `:tensorflow` alone, TensorFlow runs on the CPU.
  *
- * These are deliberately *negative* assertions about Apple Metal. Metal acceleration for TensorFlow
- * is delivered by the `tensorflow-metal` PluggableDevice, which is published only as a CPython
- * wheel (`tensorflow_metal-*-cp3xx-macosx_*_arm64.whl`) and is loaded through
- * `TF_LoadPluggableDeviceLibrary`. TensorFlow Java exposes no binding for that call, so there is no
- * supported way to register Metal from the JVM and KotlinDL runs its TensorFlow ops on the CPU.
+ * Apple Metal is reachable, but only through the optional `:tensorflow-metal` artifact
+ * (`kotlin-deeplearning-tensorflow-metal`), which targets JDK 22+ and calls
+ * `TF_LoadPluggableDeviceLibrary` via the Foreign Function & Memory API. That module is deliberately
+ * *not* a dependency here, which is exactly what these tests assert: nothing registers a device
+ * behind a caller's back, and a plain `:tensorflow` user gets unchanged CPU behaviour.
  *
- * The point of these tests is to fail if that ever stops being true -- for instance after a
- * TensorFlow Java upgrade that adds PluggableDevice support. A failure here is not a bug to be
- * silenced; it is a signal that GPU support should be revisited, and that the notes in README.md
- * and CLAUDE.md need updating.
+ * Note the distinction these tests draw. TensorFlow Java 1.0.0 exposes no *Java binding* for
+ * pluggable devices, but the shipped native does export the symbol -- which is why the optional
+ * module can reach it without new native code. A failure here therefore means one of two things:
+ * a TensorFlow Java upgrade added the binding (it landed upstream in 1.1.0), or something put the
+ * Metal plugin on this module's classpath. Neither is a bug to silence; both mean the GPU notes in
+ * README.md, CLAUDE.md and docs/metal_acceleration_plan.md need revisiting.
  */
 class AccelerationBackendTest {
 
     /**
-     * A PluggableDevice such as `tensorflow-metal` can only be registered through a binding for the
-     * `TF_LoadPluggableDeviceLibrary` C API call. [TensorFlow] offers `loadLibrary` (custom op
-     * kernels) and `registerFilesystemPlugin` (filesystem plugins) but nothing for pluggable
-     * devices, which is the concrete reason Metal is unreachable from Kotlin/Java.
+     * [TensorFlow] offers `loadLibrary` (custom op kernels) and `registerFilesystemPlugin`
+     * (filesystem plugins) but no binding for `TF_LoadPluggableDeviceLibrary`, which is why
+     * `:tensorflow-metal` has to call that symbol through the FFM API rather than through the Java
+     * API. If this ever fails, the binding has arrived and that FFM code can be deleted.
      */
     @Test
     fun tensorFlowJavaExposesNoPluggableDeviceLoader() {
@@ -85,9 +88,12 @@ class AccelerationBackendTest {
     }
 
     /**
-     * The functional counterpart of the reflection checks: on macOS there is no usable accelerator,
-     * so pinning an op to a GPU device must fail. TensorFlow Java publishes a GPU native for
+     * The functional counterpart: with only `:tensorflow` on the classpath, nothing has registered
+     * a device, so pinning an op to a GPU must fail. TensorFlow Java publishes a GPU native for
      * `linux-x86_64` only, so this assertion is scoped to macOS.
+     *
+     * The equivalent positive assertion — that placement *succeeds* once the plugin is registered —
+     * lives in `MetalDeviceTest` in the `:tensorflow-metal` module.
      */
     @Test
     @EnabledOnOs(OS.MAC)
@@ -106,9 +112,10 @@ class AccelerationBackendTest {
 
         assertFalse(
             placement.isSuccess,
-            "A GPU device became available on macOS. TensorFlow Java ships no macOS GPU native and " +
-                    "Metal cannot be registered from the JVM, so this is unexpected -- revisit the GPU " +
-                    "support notes in README.md and CLAUDE.md."
+            "A GPU device became available with only :tensorflow on the classpath. TensorFlow Java " +
+                    "ships no macOS GPU native, and registering Metal is supposed to require an explicit " +
+                    "MetalAcceleration.enable() call from :tensorflow-metal -- so something is enabling " +
+                    "an accelerator implicitly. Revisit the GPU notes in README.md and CLAUDE.md."
         )
 
         // Guard against the assertion above passing for an unrelated reason: the failure must be

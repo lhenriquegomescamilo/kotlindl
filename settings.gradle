@@ -10,6 +10,9 @@ rootProject.name = 'KotlinDL'
 include("api")
 include("impl")
 include("tensorflow")
+// Optional Apple Metal acceleration for the TensorFlow backend. Kept out of :tensorflow because it
+// needs the JDK 22+ Foreign Function & Memory API, while :tensorflow targets Java 11.
+include("tensorflow-metal")
 include("visualization")
 include("examples")
 include("dataset")
