@@ -64,10 +64,12 @@ public object MetalAcceleration {
      * This is a check of the environment only — it does not imply that the plugin itself is
      * present. [enable] is what determines that.
      */
+    @get:JvmStatic
     public val isSupportedPlatform: Boolean
         get() = PlatformSupport.describe() == null
 
     /** Whether [enable] has already succeeded in this process. */
+    @get:JvmStatic
     public val isEnabled: Boolean
         get() = enabled != null
 
@@ -86,6 +88,8 @@ public object MetalAcceleration {
      *   [MetalStatus.Unavailable] describing why. This method does not throw for an absent or
      *   unusable plugin — callers are expected to degrade to CPU.
      */
+    @JvmStatic
+    @JvmOverloads
     @Synchronized
     public fun enable(pluginPath: Path? = null): MetalStatus {
         enabled?.let { return it }
@@ -163,6 +167,9 @@ internal object PlatformSupport {
             return "tensorflow-metal is published for Apple Silicon only, but this JVM reports " +
                     "os.arch=\"$arch\". Intel Macs have no Metal plugin."
         }
+        // Backstop only. This class is compiled to Java 22 bytecode, so on an older JVM it fails
+        // to load with UnsupportedClassVersionError long before this check could run. It is kept so
+        // the requirement is stated in one place with the others.
         val feature = Runtime.version().feature()
         if (feature < 22) {
             return "This module needs the Foreign Function & Memory API, which is final in JDK 22; " +
