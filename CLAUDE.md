@@ -24,13 +24,22 @@ export ANDROID_HOME=~/Library/Android/sdk
 | `./gradlew :tensorflow:test` | The bulk of the suite (338 tests): activations, initializers, layers, plus `api/core/integration` tests that really train models |
 | `./gradlew :impl:jvmTest` | Preprocessing / image conversion — fast, good smoke test (33 tests) |
 | `./gradlew :onnx:jvmTest` | ONNX preprocessing + model summary (4 tests) |
+| `./gradlew :tensorflow-metal:test` | Metal plugin discovery + config (11 tests). Add `-Dkotlindl.metal.plugin=/path/to/libmetal_plugin.dylib` to also run the 4 end-to-end device tests, which are skipped otherwise |
 | `./gradlew :examples:test` | Integration tests that invoke the `examples` mains; downloads pretrained models, up to 8 GB heap |
 | `./gradlew fatJar` | Fat jar over all published modules |
 | `./gradlew dokkaGenerate` | API docs (Dokka 2; aggregated output lands in `build/dokka/`) |
 
 Everything builds and tests natively on arm64: `tensorflow-core-native:1.0.0` ships `macosx-arm64`, and ONNX Runtime 1.16 ships `osx-aarch64`.
 
-**Do not "upgrade" TensorFlow Java to 1.2.0.** `tensorflow-core-native:1.2.0` dropped the `macosx-x86_64` and `windows-x86_64` classifiers, so it would silently remove Windows and Intel-Mac support. 1.0.0 still publishes all five platforms and `tensorflow-core-platform` aggregates them.
+**Do not "upgrade" TensorFlow Java past 1.0.0.** Each release drops platform natives:
+
+| version | wraps TF | published natives |
+|---|---|---|
+| **1.0.0** *(current)* | 2.16.2 | linux-arm64, linux-x86_64, macosx-arm64, macosx-x86_64, windows-x86_64 |
+| 1.1.0 | 2.18.0 | …minus `macosx-x86_64` |
+| 1.2.0 | 2.21.0 | …minus `windows-x86_64` too |
+
+So 1.1.0 already costs Intel-Mac support and 1.2.0 also costs Windows. 1.0.0 is the only release publishing all five, and `tensorflow-core-platform` aggregates them. 1.1.0's one attraction is that it binds `TF_LoadPluggableDeviceLibrary` (upstream PR tensorflow/java#605); `tensorflow-metal` works around that with an FFM call instead, precisely so 1.0.0 can be kept.
 
 The pre-port history is worth knowing if you ever touch TF 1.15 code: that line ships no arm64 native, and its `darwin-x86_64` build is compiled with AVX, which Rosetta 2 does not advertise by default (the process aborts with SIGABRT at library load). Running it on Apple Silicon needed both an x86-64 test JVM *and* `ROSETTA_ADVERTISE_AVX=1`. That workaround is preserved on the `rosetta-tf115-workaround` branch and is not needed here.
 
@@ -47,6 +56,7 @@ api            interfaces + data types only; no TF/ONNX dependency. Plain JVM.
 impl           shared implementations: preprocessing ops, image utils, ImageNet/COCO labels. KMP: common/jvm/android.
 dataset        Dataset/DataLoader + embedded MNIST/CIFAR/FSDD loaders. KMP plugin but JVM target only.
 tensorflow     TF Java 1.0.0 training & inference. → api, impl, dataset. Plain JVM.
+tensorflow-metal  optional Apple Metal PluggableDevice support. → tensorflow. Plain JVM, **jvmTarget 22**.
 onnx           ONNX Runtime inference.        → api, impl.           KMP: common/jvm/android.
 visualization  lets-plot + Swing (jvm), detection overlay views (android). → api, tensorflow.
 examples       not published; depends on everything.
@@ -77,8 +87,8 @@ Keras interop is in `tensorflow/…/api/inference/keras/`: `ModelLoader` parses 
 
 ## Conventions
 
-- **Explicit API mode** (`explicitApiWarning()`) is enabled in `api`, `impl`, `dataset`, `tensorflow`, `onnx` — but not `visualization`. Public declarations need explicit visibility modifiers and explicit return types.
-- `jvmTarget = JVM_11` in every module via `kotlin { compilerOptions { } }` (Kotlin 2.x removed `kotlinOptions`), even though the build itself needs JDK 17+. `gradlePlugin` targets 17, the Gradle 9 baseline.
+- **Explicit API mode** (`explicitApiWarning()`) is enabled in `api`, `impl`, `dataset`, `tensorflow`, `onnx`, `tensorflow-metal` — but not `visualization`. Public declarations need explicit visibility modifiers and explicit return types.
+- `jvmTarget = JVM_11` in every module via `kotlin { compilerOptions { } }` (Kotlin 2.x removed `kotlinOptions`), even though the build itself needs JDK 17+. `gradlePlugin` targets 17, the Gradle 9 baseline. `tensorflow-metal` targets **22** because `java.lang.foreign` is JDK 22+; it is the only module with a JDK 25 toolchain, pinned back to the 22 API with `-Xjdk-release=22`, and is deliberately kept out of `gradle/fatJar.gradle` so the fat jar keeps its Java 11 floor.
 - Every source file opens with the JetBrains Apache 2.0 copyright header — copy it from a neighbouring file.
 - Tests use JUnit 5. Classes are named `XxxTest` / `XxxTestSuite`; no backticks or underscores in test names (CONTRIBUTING.md).
 - In KMP modules, shared code goes in `commonMain` and diverges in `jvmMain` / `androidMain`. Putting a JVM-only API (`BufferedImage`, `java.io.File`) into `commonMain` breaks the Android target.
