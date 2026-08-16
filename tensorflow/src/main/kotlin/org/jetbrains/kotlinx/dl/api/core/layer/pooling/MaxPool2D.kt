@@ -48,14 +48,8 @@ public class MaxPool2D(
         isTraining: Operand<TBool>,
         numberOfLosses: Operand<TFloat32>?
     ): Operand<TFloat32> {
-        val paddingName = padding.paddingName
-
-        return tf.nn.maxPool(
-            input,
-            tf.constant(poolSize),
-            tf.constant(strides),
-            paddingName
-        )
+        // Emits "MaxPool" rather than "MaxPoolV2"; see maxPoolWithStaticWindow for why that matters.
+        return tf.maxPoolWithStaticWindow(input, poolSize, strides, padding.paddingName)
     }
 
     override fun toString(): String {

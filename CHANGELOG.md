@@ -14,6 +14,13 @@ API changes:
   Defaults to `null`, leaving existing behaviour unchanged. Required for Metal, whose plugin has no
   kernel for the `Assign` op.
 
+Performance:
+* `MaxPool1D` and `MaxPool2D` now emit the `MaxPool` op instead of `MaxPoolV2`, passing the pooling
+  window and strides as attributes rather than as input tensors. Output is unchanged. `MaxPoolV2`
+  has no Apple Metal kernel, so it forced pooling — and the surrounding graph — back onto the CPU:
+  on a 224x224 CNN training step at batch 32 this took the Metal step from 200 ms to 112 ms, raising
+  the speedup over CPU from 1.35x to 2.26x. It is also marginally faster on the CPU.
+
 # 0.6.0-alpha-1 (16/01/2023) New inference api with multiple inputs support
 API changes:
 * Changed `InferenceModel` interface:
